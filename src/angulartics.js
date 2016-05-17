@@ -27,6 +27,49 @@ angulartics.waitForVendorApi = function (objectName, delay, containsField, regis
 angular.module('angulartics', [])
 .provider('$analytics', $analytics)
 .run(['$rootScope', '$window', '$analytics', '$injector', $analyticsRun])
+
+.directive('analytics', function() {
+function isProperty(name) {
+    return name.substr(0, 9) === 'analytics' && ['On', 'Event', 'If', 'Properties', 'EventType'].indexOf(name.substr(9)) === -1;
+}
+function propertyName(name) {
+    var s = name.slice(9); // slice off the 'analytics' prefix
+    if (typeof s !== 'undefined' && s!==null && s.length > 0) {
+        return s.substring(0, 1).toLowerCase() + s.substring(1);
+    }
+    else {
+        return s;
+    }
+}
+
+return{
+    restrict: 'AEC',
+    link: function($scope, $element, $attrs ) {
+
+        $scope.trackingData = {};
+
+        angular.forEach($attrs.$attr, function(attr, name) {
+            if (isProperty(name)) {
+                $scope.trackingData[propertyName(name)] = $attrs[name];
+                $attrs.$observe(name, function(value){
+                    $scope.trackingData[propertyName(name)] = value;
+                });
+            }
+        });
+    },
+
+    controller: ['$scope', function($scope) {
+
+        this.getData = function() {
+            return $scope.trackingData;
+        };
+
+    }]
+
+}
+
+})
+
 .directive('analyticsOn', ['$analytics', analyticsOn])
 .config(['$provide', exceptionTrack]);
 
@@ -311,7 +354,13 @@ function analyticsOn($analytics) {
       angular.element($element[0]).bind(eventType, function ($event) {
         var eventName = $attrs.analyticsEvent || inferEventName($element[0]);
         trackingData.eventType = $event.type;
-
+        
+        angular.forEach(ctrl.getData(), function(value, key) {
+          if (!(key in trackingData)) {
+            trackingData[key] = value
+          }
+        });
+        
         if($attrs.analyticsIf){
           if(! $scope.$eval($attrs.analyticsIf)){
             return; // Cancel this event if we don't pass the analytics-if condition
