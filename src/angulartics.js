@@ -290,7 +290,7 @@ function analyticsOn($analytics) {
   return {
     require:'^analytics',
     restrict: 'A',
-    link: function ($scope, $element, $attrs) {
+    link: function ($scope, $element, $attrs, ctrl) {
       var eventType = $attrs.analyticsOn || 'click';
       var trackingData = {};
 
